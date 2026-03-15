@@ -55,4 +55,4 @@ As a project led by a QA-focused developer, AquaNova underwent rigorous testing:
 * **Object Accuracy:** Iterative training of the `.pt` model to reduce false positives in dynamic lighting.
 
 ---
-**Developed by John Ivan Ello** *Third-Year IT Student | Pamantasan ng Lungsod ng Maynila* *Specializing in Full-Stack Web, Robotics, and IoT Systems.*
+**Developed by John Ivan Ello**
