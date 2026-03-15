@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nova Control Dashboard</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f7f9;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      display: grid;
+      grid-template-columns: 250px 1fr;
+      min-height: 100vh;
+    }
+    .sidebar {
+      background: #2c3e50;
+      color: white;
+      padding: 20px;
+    }
+    .sidebar h1 {
+      font-size: 22px;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    .modes label {
+      display: block;
+      margin: 10px 0;
+      cursor: pointer;
+    }
+    .main {
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .main h1 {
+      text-align: center;
+      margin: 0;
+    }
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+    }
+    button {
+      padding: 12px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    button:hover {
+      opacity: 0.9;
+    }
+    .on { background: #4caf50; color: white; }
+    .off { background: #f44336; color: white; }
+    .sliders {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 20px;
+    }
+    .slider-container {
+      text-align: center;
+    }
+    input[type="range"] {
+      width: 150px;
+    }
+    .status, .detections-container, .video-container {
+      background: white;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+    .status h2, .detections-container h2, .video-container h2 {
+      margin-top: 0;
+      text-align: center;
+    }
+    .video-container img {
+      display: block;
+      margin: 0 auto;
+      border: 2px solid #333;
+      border-radius: 8px;
+      max-width: 100%;
+      height: auto;
+    }
+    canvas {
+      display: block;
+      margin: 0 auto;
+    }
+    /* ✅ Mobile friendly */
+    @media (max-width: 768px) {
+      .container {
+        grid-template-columns: 1fr;
+      }
+      .sidebar {
+        text-align: center;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Sidebar for modes -->
+    <nav class="sidebar">
+      <h1>Modes</h1>
+      <div class="modes">
+        <label><input type="checkbox" onclick="toggleMode('CW', this)"> CW</label>
+        <label><input type="checkbox" onclick="toggleMode('TC', this)"> TC</label>
+        <!--<label><input type="checkbox" onclick="toggleMode('HM', this)"> HM</label>-->
+        <label><input type="checkbox" onclick="toggleMode('TNW', this)"> TNW</label>
+      </div>
+    </nav>
+
+    <!-- Main section -->
+    <main class="main">
+      <h1>Nova Control</h1>
+
+      <!-- Controls -->
+      <div class="controls">
+        <button id="pumpBtn" class="off" onclick="togglePump()">Pump: OFF</button>
+        <button onclick="drive('forward')">Forward</button>
+        <button onclick="drive('left')">Left</button>
+        <button onclick="drive('right')">Right</button>
+        <button onclick="drive('stop')">Stop</button>
+        <button onclick="window.location.href='/waypoints'">Waypoints</button>
+      </div>
+
+      <!-- Status -->
+      <div class="status">
+        <h2>Status</h2>
+        <p>CW Target: <span id="cwTarget">None</span>, Distance: <span id="cwDistance">--</span> m</p>
+        <p>TNW Target: <span id="tnwTarget">None</span>, Zone: <span id="tnwZone">--</span></p>
+        <p>TC Waypoint: <span id="tcWaypoint">None</span>, Distance: <span id="tcDistance">--</span>, Target: <span id="tcTarget">None</span>, Zone: <span id="tcZone">--</span></p>
+      </div>
+
+     <!-- Sliders -->
+<div class="sliders">
+  <div class="slider-container">
+    <label for="leftSlider">Left Door: 
+      <span id="left-value">90</span>
+    </label><br>
+    <input id="leftSlider" type="range" min="0" max="180" value="90"
+           oninput="document.getElementById('left-value').innerText = this.value">
+  </div>
+
+  <div class="slider-container">
+    <label for="thrust">Thrust: 
+      <span id="thrust-value">150</span>
+    </label><br>
+    <input type="range" id="thrust" min="0" max="255" value="150"
+           oninput="updateThrust(this.value)">
+  </div>
+
+  <div class="slider-container">
+    <label for="rightSlider">Right Door: 
+      <span id="right-value">90</span>
+    </label><br>
+    <input id="rightSlider" type="range" min="0" max="180" value="90"
+           oninput="document.getElementById('right-value').innerText = this.value">
+  </div>
+
+  <div class="slider-container">
+    <button onclick="setChambers(
+      document.getElementById('leftSlider').value,
+      document.getElementById('rightSlider').value
+    )">Set Doors</button>
+  </div>
+</div>
+
+
+      <!-- Propeller -->
+      <h2 style="text-align:center;">Propeller Alignment</h2>
+      <canvas id="propCanvas" width="200" height="100"></canvas>
+
+      <!-- Video -->
+      <div class="video-container">
+        <h2>Live Camera Feed</h2>
+        <img src="{{ url_for('video_feed') }}" alt="Camera Feed" width="640" height="480">
+      </div>
+
+      <!-- Detections -->
+      <div class="detections-container">
+        <h2>Detected Trash</h2>
+        <pre id="detections"></pre>
+      </div>
+
+      <!-- Sensors -->
+      <div class="status">
+        <h2>Sensor Readings</h2>
+        <p><strong>Battery:</strong> <span id="battery">--</span> V</p>
+        <p><strong>Compass:</strong> <span id="compass">--</span> °</p>
+        <p><strong>Latitude:</strong> <span id="lat">--</span></p>
+        <p><strong>Longitude:</strong> <span id="lon">--</span></p>
+        <p><strong>IR Left:</strong> <span id="ir_left">--</span></p>
+        <p><strong>IR Right:</strong> <span id="ir_right">--</span></p>
+      </div>
+    </main>
+  </div>
+
+  <script>
+let driveState = 'stop';
+let pumpOn = false;
+let propAngle = 90; // start facing forward
+
+function drive(direction) {
+    driveState = direction;
+
+    // Update propeller angle
+    switch(direction) {
+        case 'forward': propAngle = 90; break;
+        case 'left': propAngle = 45; break;
+        case 'right': propAngle = 135; break;
+        case 'stop': propAngle = 90; break;
+    }
+
+    // Send drive command to backend
+    fetch(`/drive?direction=${direction}`, { method: "POST" })
+        .then(res => res.text())
+        .then(console.log)
+        .catch(err => console.error(err));
+}
+
+// Stop if no mode is active
+setInterval(() => {
+  if (!document.querySelectorAll('.modes input:checked').length) {
+    if (driveState !== 'stop') drive('stop');
+  }
+}, 200);
+
+function updateThrust(value) {
+  document.getElementById('thrust-value').innerText = value;
+  fetch('/set_motor_speed', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ speed2: value })
+  });
+}
+
+function setChambers(left, right) {
+  fetch('/door', {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ left: left, right: right })
+  })
+  .then(res => res.json())
+  .then(data => console.log("Response:", data))
+  .catch(err => console.error(err));
+}
+
+function togglePump() {
+  const desiredState = pumpOn ? "off" : "on";
+
+  fetch("/toggle_pump", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ state: desiredState })
+  })
+  .then(res => res.json())
+  .then(data => {
+    console.log("Pump Response:", data);
+    pumpOn = (data.pump === "on"); // ✅ sync with backend
+    const btn = document.getElementById("pumpBtn");
+    btn.textContent = "Pump: " + (pumpOn ? "ON" : "OFF");
+    btn.className = pumpOn ? "on" : "off";
+  })
+  .catch(err => console.error(err));
+}
+
+
+function toggleMode(mode, checkbox) {
+  fetch("/mode", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({
+      mode: mode,
+      state: checkbox.checked
+    })
+  })
+  .then(r => r.json())
+  .then(d => {
+    console.log("[Mode]", d);
+
+    // If CW turned off → reset display
+    if (mode === "CW" && !checkbox.checked) {
+      document.getElementById("cwTarget").innerText = "None";
+      document.getElementById("cwDistance").innerText = "--";
+    }
+
+    // If TNW turned off → reset display
+    if (mode === "TNW" && !checkbox.checked) {
+      document.getElementById("tnwTarget").innerText = "None";
+      document.getElementById("tnwZone").innerText = "--";
+    }
+	 // If TC turned off → reset display
+    if (mode === "TC" && !checkbox.checked) {
+      document.getElementById("tcWaypoint").innerText = "None";
+      document.getElementById("tcDistance").innerText = "--";
+      document.getElementById("tcTarget").innerText = "None";
+	  document.getElementById("tcZone").innerText = "--";
+
+    }
+  })
+  .catch(err => console.error("Mode toggle failed:", err));
+}
+
+
+
+function drawPropeller() {
+  const canvas = document.getElementById("propCanvas");
+  const ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  ctx.save();
+  ctx.translate(canvas.width / 2, canvas.height / 2);
+  ctx.rotate((propAngle - 90) * Math.PI / 180);
+
+  ctx.beginPath();
+  ctx.moveTo(0, -30);
+  ctx.lineTo(0, 30);
+  ctx.strokeStyle = "#333";
+  ctx.lineWidth = 6;
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+// ✅ Unified sensor updater
+async function updateAllSensors() {
+  try {
+      const response = await fetch("/sensors");
+      const data = await response.json();
+
+      // CW status
+document.getElementById("cwTarget").innerText = data.cw_target || "None";
+document.getElementById("cwDistance").innerText = data.cw_distance || "--";
+
+// TNW status
+document.getElementById("tnwTarget").innerText = data.tnw_target || "None";
+document.getElementById("tnwZone").innerText = data.tnw_zone || "--";
+// TC status
+document.getElementById("tcWaypoint").innerText = data.tc_waypoint || "None";
+document.getElementById("tcDistance").innerText = data.tc_distance || "--";
+document.getElementById("tcTarget").innerText = data.tc_target || "None";
+document.getElementById("tcZone").innerText = data.tc_zone || "--";
+
+      // Sensor values
+	  document.getElementById("pumpBtn").textContent = "Pump: " + (data.pump === "on" ? "ON" : "OFF");
+document.getElementById("pumpBtn").className = (data.pump === "on" ? "on" : "off");
+pumpOn = (data.pump === "on"); // ✅ keep global in sync
+
+      document.getElementById("battery").textContent = data.battery.toFixed(2);
+      document.getElementById("compass").textContent = data.compass.toFixed(1);
+      document.getElementById("ir_left").textContent = data.ir_left;
+      document.getElementById("ir_right").textContent = data.ir_right;
+      document.getElementById("lat").textContent = data.latitude.toFixed(6);
+      document.getElementById("lon").textContent = data.longitude.toFixed(6);
+
+  } catch (e) {
+      console.error("Error fetching sensors:", e);
+  }
+}
+
+async function updateDetections() {
+  try {
+    const res = await fetch("/detections");
+    const data = await res.json();
+    document.getElementById("detections").textContent =
+      JSON.stringify(data, null, 2);
+  } catch (err) {
+    console.error("Detection fetch failed:", err);
+  }
+}
+
+setInterval(updateDetections, 1000); 
+setInterval(updateAllSensors, 1000); // ✅ single function now
+setInterval(drawPropeller, 100);  </script>
+</body>
+</html>

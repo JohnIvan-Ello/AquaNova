@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Waypoint Manager</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    table { border-collapse: collapse; width: 100%; margin-bottom: 20px; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
+    th { background: #f0f0f0; }
+    button { margin: 4px; padding: 6px 12px; }
+  </style>
+</head>
+<body>
+  <h1>Waypoint Manager</h1>
+  <table id="waypointsTable">
+    <thead>
+      <tr><th>Name</th><th>Latitude</th><th>Longitude</th><th>Actions</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <h3>Add / Edit Waypoint</h3>
+  <input id="wpName" placeholder="Name (h, w1, w2...)" />
+  <input id="wpLat" placeholder="Latitude" type="number" step="0.000001" />
+  <input id="wpLon" placeholder="Longitude" type="number" step="0.000001" />
+  <button onclick="saveWaypoint()">Save</button>
+
+  <h3>Backup / Restore</h3>
+  <button onclick="downloadJSON()">Download JSON</button>
+  <input type="file" id="uploadFile" onchange="uploadJSON()" />
+
+<script>
+async function loadWaypoints() {
+  const res = await fetch("/api/waypoints");
+  const data = await res.json();
+  const tbody = document.querySelector("#waypointsTable tbody");
+  tbody.innerHTML = "";
+  for (let name in data) {
+    const wp = data[name];
+    tbody.innerHTML += `
+      <tr>
+        <td>${name}</td>
+        <td>${wp.lat}</td>
+        <td>${wp.lon}</td>
+        <td>
+          <button onclick="editWaypoint('${name}', ${wp.lat}, ${wp.lon})">Edit</button>
+          <button onclick="deleteWaypoint('${name}')">Delete</button>
+        </td>
+      </tr>`;
+  }
+}
+
+async function saveWaypoint() {
+  const name = document.getElementById("wpName").value;
+  const lat = parseFloat(document.getElementById("wpLat").value);
+  const lon = parseFloat(document.getElementById("wpLon").value);
+  await fetch("/api/waypoints", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, lat, lon })
+  });
+  loadWaypoints();
+}
+
+function editWaypoint(name, lat, lon) {
+  document.getElementById("wpName").value = name;
+  document.getElementById("wpLat").value = lat;
+  document.getElementById("wpLon").value = lon;
+}
+
+async function deleteWaypoint(name) {
+  await fetch("/api/waypoints/" + name, { method: "DELETE" });
+  loadWaypoints();
+}
+
+function downloadJSON() {
+  window.location = "/api/waypoints/download";
+}
+
+async function uploadJSON() {
+  const fileInput = document.getElementById("uploadFile");
+  const formData = new FormData();
+  formData.append("file", fileInput.files[0]);
+  await fetch("/api/waypoints/upload", { method: "POST", body: formData });
+  loadWaypoints();
+}
+
+loadWaypoints();
+</script>
+</body>
+</html>
