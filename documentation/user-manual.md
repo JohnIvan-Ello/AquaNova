@@ -9,7 +9,7 @@ AquaNova is an autonomous IoT-integrated robotic system designed for aquatic was
 The system integrates low-level microcontroller logic with high-level processing for navigation and computer vision.
 
 ### System Components
-![Hardware Parts](hardware-parts.jpg)
+![Hardware Parts](hardware-parts.png)
 
 | ID | Component | Primary Function |
 | :--- | :--- | :--- |
